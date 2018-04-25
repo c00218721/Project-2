@@ -100,8 +100,8 @@
       <AdditionalDependencies>glew32.lib;glew32s.lib;sfml-graphics-d.lib;sfml-audio-d.lib;sfml-system-d.lib;sfml-window-d.lib;sfml-network-d.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>xcopy $(SFML_SDK)\bin $(TargetDir) /C /Y
+xcopy $(GLEW_SDK)\bin\Release\Win32 $(TargetDir) /C /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -155,21 +155,17 @@
   <ItemGroup>
     <ClInclude Include="Cube.h" />
     <ClInclude Include="Debug.h" />
+    <ClInclude Include="Easing.h" />
     <ClInclude Include="Game.h" />
-    <ClInclude Include="Goal.h" />
-    <ClInclude Include="Player.h" />
-    <ClInclude Include="Projectile.h" />
+    <ClInclude Include="Matrix3.h" />
     <ClInclude Include="stb_image.h" />
-    <ClInclude Include="textfile.h" />
+    <ClInclude Include="Vector3.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Easing.cpp" />
     <ClCompile Include="Game.cpp" />
-    <ClCompile Include="Goal.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Player.cpp" />
-    <ClCompile Include="Projectile.cpp" />
     <ClCompile Include="stb_image.c" />
-    <ClCompile Include="textfile.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />

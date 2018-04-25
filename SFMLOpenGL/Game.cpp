@@ -1,17 +1,18 @@
 #include <Game.h>
 #include <Cube.h>
+#include <Easing.h>
 
 // Helper to convert Number to String for HUD
 template <typename T>
-std::string toString(T number)
+string toString(T number)
 {
-	std::ostringstream oss;
+	ostringstream oss;
 	oss << number;
 	return oss.str();
 }
 
-GLuint	vertShader,
-		fragShader,
+GLuint	vsid,		// Vertex Shader ID
+		fsid,		// Fragment Shader ID
 		progID,		// Program ID
 		vao = 0,	// Vertex Array ID
 		vbo,		// Vertex Buffer ID
@@ -19,113 +20,181 @@ GLuint	vertShader,
 		to[1];		// Texture ID
 GLint	positionID,	// Position ID
 		colorID,	// Color ID
-		mvpID[3],	// Model View Projection ID
 		textureID,	// Texture ID
 		uvID,		// UV ID
+		mvpID,		// Model View Projection ID
 		x_offsetID, // X offset ID
 		y_offsetID,	// Y offset ID
 		z_offsetID;	// Z offset ID
 
 GLenum	error;		// OpenGL Error Code
 
-int width;				
-int height;					
-int comp_count;					
-const int PLAYER = 0;
-const int PROJ = 1;
-const int GOAL = 2;
-const std::string filename = ".//Assets//Textures//cube.tga"; //opens texture from file
-float x_offset, y_offset, z_offset; // offset on screen (Vertex Shader)
 
+//Please see .//Assets//Textures// for more textures
+const string filename = ".//Assets//Textures//grid_wip.tga";
+
+int width;						// Width of texture
+int height;						// Height of texture
+int comp_count;					// Component of texture
 
 unsigned char* img_data;		// image data
 
-glm::mat4 mvp[3], projection, view;	// Model View Projectio
-sf::Font font;						// Game font
+mat4 mvp, projection, 
+		view, model;			// Model View Projection
 
+mat4 mvp2, projection2,
+view2, model2;
+
+Font font;						// Game font
+
+float x_offset, y_offset, z_offset; // offset on screen (Vertex Shader)
 
 Game::Game() : 
-	m_window(sf::VideoMode(800, 600),	"Introduction to OpenGL Texturing")
+	window(VideoMode(800, 600), 
+	"Introduction to OpenGL Texturing")
 {
 }
 
 Game::Game(sf::ContextSettings settings) : 
-	m_window(sf::VideoMode(800, 600), 
+	window(VideoMode(800, 600), 
 	"Introduction to OpenGL Texturing", 
 	sf::Style::Default, 
 	settings)
 {
 }
 
-Game::~Game()
-{
-}
+Game::~Game(){}
+
 
 void Game::run()
 {
+
 	initialize();
 
-	sf::Clock clock;
-	sf::Time timeSinceLastUpdate = sf::Time::Zero;
-	sf::Time timePerFrame = sf::seconds(1.f / 60.f); // 60 fps
-	while (m_window.isOpen())
-	{
+	Event event;
+
+	float rotation = 0.01f;
+	float start_value = 0.0f;
+	float end_value = 1.0f;
+
+	while (isRunning){
+
 #if (DEBUG >= 2)
 		DEBUG_MSG("Game running...");
 #endif
-		processEvents(); // as many as possible
 
-
-		timeSinceLastUpdate += clock.restart();
-
-		while (timeSinceLastUpdate > timePerFrame && isRunning)
+		while (window.pollEvent(event))
 		{
-
-			timeSinceLastUpdate -= timePerFrame;
-
-			processEvents(); // as many as possible
-			update(timePerFrame); //60 fps
-		}
-		render(); // as many as possible
-	}
-
-}
-
-void Game::processEvents()
-{
-	sf::Event event;
-
-	while (m_window.pollEvent(event))
-	{
-		if (sf::Event::Closed == event.type) // window message
-		{
-#if (DEBUG >= 2)
-			DEBUG_MSG("Calling Cleanup...");
-#endif
-			unload();
-			m_window.close();
-		}
-
-		if (sf::Event::KeyPressed == event.type) //user key press
-		{
-			if (sf::Keyboard::Escape == event.key.code)
+			if (event.type == Event::Closed)
 			{
-				m_exitGame = true;
+				isRunning = false;
+			}
+
+			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+			{
+				camPos = rotationMat * camPos;
+				camPos2 = rotationMat * camPos2;
 
 			}
 
+			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+			{
+				camPos = rotationMat2 * camPos;
+				camPos2 = rotationMat2 * camPos2;
 
+				// https://www.sfml-dev.org/documentation/2.0/classsf_1_1Clock.php
+				// https://github.com/acron0/Easings
+				// http://robotacid.com/documents/code/Easing.cs
+				// http://st33d.tumblr.com/post/94243475686/easing-equations-for-unity-c
+				// http://easings.net/
+				// http://upshots.org/actionscript/jsas-understanding-easing
+				// https://www.kirupa.com/html5/animating_with_easing_functions_in_javascript.htm
+				// https://medium.com/motion-in-interaction/animation-principles-in-ui-design-understanding-easing-bea05243fe3#.svh4gczav
+				// http://thednp.github.io/kute.js/easing.html
+				// http://gizma.com/easing/#quad1
+				// https://github.com/warrenm/AHEasing
+
+				// VR
+				// https://www.sfml-dev.org/documentation/2.4.2/classsf_1_1Sensor.php
+				// http://en.sfml-dev.org/forums/index.php?topic=9412.msg65594
+				// https://github.com/SFML/SFML/wiki/Tutorial:-Building-SFML-for-Android-on-Windows
+				// https://github.com/SFML/SFML/wiki/Tutorial:-Building-SFML-for-Android
+				// https://www.youtube.com/watch?v=n_JSi6ihDFs
+				// http://en.sfml-dev.org/forums/index.php?topic=8010.0
+				// 
+
+				/*
+				// Set Model Rotation
+				// t = time, b = startvalue, c = change in value, d = duration:
+
+				time = clock.getElapsedTime();
+				std::cout << time.asSeconds() << std::endl;
+				float original = 0.001f;
+				float destination = 0.05f;
+
+				float factor, temp;
+
+				for (int t = 0; t < 5.0f; t++)
+				{
+				factor = gpp::Easing::easeIn(t, original, 0.00001f, 5.0f);
+				cout << "Factor : " << factor << endl;
+				}
+
+
+				factor = gpp::Easing::easeIn(time.asMilliseconds(), original, 0.00001f, 5.0f);
+				cout << "Factor : " << factor << endl;
+				temp = original + ((destination - original) * factor);
+				cout << "Temp : " << factor << endl;
+				model = rotate(model, temp, glm::vec3(0, 1, 0)); // Rotate
+				*/
+			}
+
+			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+			{
+				// Set Model Rotation
+				model = rotate(model, -0.01f, glm::vec3(1, 0, 0)); // Rotate
+			}
+
+			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+			{
+				// Set Model Rotation
+				model = rotate(model, 0.01f, glm::vec3(1, 0, 0)); // Rotate
+			}
+
+			if (animate)
+			{
+				rotation += (1.0f * rotation) + 0.05f;
+				model = rotate(model, 0.01f, animation); // Rotate
+				rotation = 0.0f;
+				animate = false;
+			}
 		}
+		update();
+		render();
 	}
+
+#if (DEBUG >= 2)
+	DEBUG_MSG("Calling Cleanup...");
+#endif
+	unload();
+
 }
 
 void Game::initialize()
 {
+
+	rotationMat = mat4(cos(-0.05), 0, sin(-0.05), 0, 0, 1, 0, 0, -sin(-0.05), 0, cos(-0.05), 0, 0, 0, 0, 1);
+	rotationMat2 = mat4(cos(0.05), 0, sin(0.05), 0, 0, 1, 0, 0, -sin(0.05), 0, cos(0.05), 0, 0, 0, 0, 1);
+
 	isRunning = true;
 	GLint isCompiled = 0;
 	GLint isLinked = 0;
 
-	if (!glewInit()) { DEBUG_MSG("glewInit() failed"); }
+	if (!(!glewInit())) { DEBUG_MSG("glewInit() failed"); }
+
+	// Copy UV's to all faces
+	for (int i = 1; i < 6; i++)
+		memcpy(&uvs[i * 4 * 2], &uvs[0], 2 * 4 * sizeof(GLfloat));
 
 	DEBUG_MSG(glGetString(GL_VENDOR));
 	DEBUG_MSG(glGetString(GL_RENDERER));
@@ -144,8 +213,98 @@ void Game::initialize()
 	// Indices to be drawn
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * INDICES * sizeof(GLuint), indices, GL_STATIC_DRAW);
 
-	setShader();
-	
+	// NOTE: uniforms values must be used within Shader so that they 
+	// can be retreived
+	const char* vs_src =
+		"#version 400\n\r"
+		""
+		"in vec3 sv_position;"
+		"in vec4 sv_color;"
+		"in vec2 sv_uv;"
+		""
+		"out vec4 color;"
+		"out vec2 uv;"
+		""
+		"uniform mat4 sv_mvp;"
+		"uniform float sv_x_offset;"
+		"uniform float sv_y_offset;"
+		"uniform float sv_z_offset;"
+		""
+		"void main() {"
+		"	color = sv_color;"
+		"	uv = sv_uv;"
+		//"	gl_Position = vec4(sv_position, 1);"
+		"	gl_Position = sv_mvp * vec4(sv_position.x + sv_x_offset, sv_position.y + sv_y_offset, sv_position.z + sv_z_offset, 1 );"
+		"}"; //Vertex Shader Src
+
+	DEBUG_MSG("Setting Up Vertex Shader");
+
+	vsid = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vsid, 1, (const GLchar**)&vs_src, NULL);
+	glCompileShader(vsid);
+
+	// Check is Shader Compiled
+	glGetShaderiv(vsid, GL_COMPILE_STATUS, &isCompiled);
+
+	if (isCompiled == GL_TRUE) {
+		DEBUG_MSG("Vertex Shader Compiled");
+		isCompiled = GL_FALSE;
+	}
+	else
+	{
+		DEBUG_MSG("ERROR: Vertex Shader Compilation Error");
+	}
+
+	const char* fs_src =
+		"#version 400\n\r"
+		""
+		"uniform sampler2D f_texture;"
+		""
+		"in vec4 color;"
+		"in vec2 uv;"
+		""
+		"out vec4 fColor;"
+		""
+		"void main() {"
+		"	fColor = color - texture2D(f_texture, uv);"
+		""
+		"}"; //Fragment Shader Src
+
+	DEBUG_MSG("Setting Up Fragment Shader");
+
+	fsid = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fsid, 1, (const GLchar**)&fs_src, NULL);
+	glCompileShader(fsid);
+
+	// Check is Shader Compiled
+	glGetShaderiv(fsid, GL_COMPILE_STATUS, &isCompiled);
+
+	if (isCompiled == GL_TRUE) {
+		DEBUG_MSG("Fragment Shader Compiled");
+		isCompiled = GL_FALSE;
+	}
+	else
+	{
+		DEBUG_MSG("ERROR: Fragment Shader Compilation Error");
+	}
+
+	DEBUG_MSG("Setting Up and Linking Shader");
+	progID = glCreateProgram();
+	glAttachShader(progID, vsid);
+	glAttachShader(progID, fsid);
+	glLinkProgram(progID);
+
+	// Check is Shader Linked
+	glGetProgramiv(progID, GL_LINK_STATUS, &isLinked);
+
+	if (isLinked == 1) {
+		DEBUG_MSG("Shader Linked");
+	}
+	else
+	{
+		DEBUG_MSG("ERROR: Shader Link Error");
+	}
+
 	// Set image data
 	// https://github.com/nothings/stb/blob/master/stb_image.h
 	img_data = stbi_load(filename.c_str(), &width, &height, &comp_count, 4);
@@ -169,13 +328,6 @@ void Game::initialize()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	// Camera Matrix
-	view = glm::lookAt(
-		glm::vec3(0.0f, 4.0f, 10.0f),	// Camera (x,y,z), in World Space
-		glm::vec3(0.0f, 0.0f, 0.0f),		// Camera looking at origin
-		glm::vec3(0.0f, 1.0f, 0.0f)		// 0.0f, 1.0f, 0.0f Look Down and 0.0f, -1.0f, 0.0f Look Up
-	);
-
 	// Bind to OpenGL
 	// https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexImage2D.xml
 	glTexImage2D(
@@ -191,7 +343,7 @@ void Game::initialize()
 		);
 
 	// Projection Matrix 
-	projection = glm::perspective(
+	projection = perspective(
 		45.0f,					// Field of View 45 degrees
 		4.0f / 3.0f,			// Aspect ratio
 		5.0f,					// Display Range Min : 0.1f unit
@@ -200,6 +352,38 @@ void Game::initialize()
 
 
 
+	camPos = vec4(1.5f, 4.0f, 10.0f, 1);
+	camPos2 = vec4(-1.5, 4.0, 10.0f, 1);
+	// Camera Matrix	0.0f, 4.0f, 10.0f
+	view = lookAt(
+		vec3(camPos),	// Camera (x,y,z), in World Space
+		vec3(0.0f, 0.0f, 0.0f),		// Camera looking at origin
+		vec3(0.0f, 1.0f, 0.0f)		// 0.0f, 1.0f, 0.0f Look Down and 0.0f, -1.0f, 0.0f Look Up
+		);
+
+	// Model matrix
+	model = mat4(
+		1.0f					// Identity Matrix
+		);
+
+	projection2 = perspective(
+		45.0f,					// Field of View 45 degrees
+		4.0f / 3.0f,			// Aspect ratio
+		5.0f,					// Display Range Min : 0.1f unit
+		100.0f					// Display Range Max : 100.0f unit
+	);
+
+	// Camera Matrix
+	view2 = lookAt(
+		vec3(camPos2),	// Camera (x,y,z), in World Space
+		vec3(0.0f, 0.0f, 0.0f),		// Camera looking at origin
+		vec3(0.0f, 1.0f, 0.0f)		// 0.0f, 1.0f, 0.0f Look Down and 0.0f, -1.0f, 0.0f Look Up
+	);
+
+	// Model matrix
+	model2 = mat4(
+		1.0f					// Identity Matrix
+	);
 
 	// Enable Depth Test
 	glEnable(GL_DEPTH_TEST);
@@ -208,57 +392,31 @@ void Game::initialize()
 
 	// Load Font
 	font.loadFromFile(".//Assets//Fonts//BBrick.ttf");
-
-	initCubes();
 }
 
-void Game::update(sf::Time t_deltaTime)
+void Game::update()
 {
-	if (m_exitGame)
-	{
-		unload();
-		m_window.close();
-	}
-
-	doInput(t_deltaTime);
-
-	if (moving && 
-		glm::distance(glm::vec3(m_bulletCube.getModel()[3].x, m_bulletCube.getModel()[3].y, m_bulletCube.getModel()[3].z), glm::vec3(m_playerModel.getModel()[3].x , m_playerModel.getModel()[3].y, m_playerModel.getModel()[3].z)) <= 20)
-	{
-		glm::mat4 mat = glm::translate(m_bulletCube.getModel(), glm::vec3(0, 0, -0.075 * t_deltaTime.asMilliseconds()));
-		m_bulletCube.setCube(mat);
-		checkCollsions();
-	}
-	else if (glm::distance(glm::vec3(m_bulletCube.getModel()[3].x, m_bulletCube.getModel()[3].y, m_bulletCube.getModel()[3].z), glm::vec3(m_playerModel.getModel()[3].x, m_playerModel.getModel()[3].y, m_playerModel.getModel()[3].z)) > 20 && moving)
-	{
-		moving = false;
-		m_lives--;
-	}
-
-	#if (DEBUG >= 2)
+#if (DEBUG >= 2)
 	DEBUG_MSG("Updating...");
-	#endif
+#endif
 	// Update Model View Projection
 	// For mutiple objects (cubes) create multiple models
 	// To alter Camera modify view & projection
-	mvp[PLAYER] = projection * view * m_playerModel.getModel();
-	mvp[PROJ] = projection * view * m_bulletCube.getModel();
-	mvp[GOAL] = projection * view * m_scoreArea.getModel();
+	mvp = projection * view * model;
+	mvp2 = projection2 * view2 * model2;
+	DEBUG_MSG(model[0].x);
+	DEBUG_MSG(model[0].y);
+	DEBUG_MSG(model[0].z);
 
-	if (m_lives < 0)
-	{
-		initCubes();
-	}
+	view2 = lookAt(
+		vec3(camPos2),	// Camera (x,y,z), in World Space
+		vec3(0.0f, 0.0f, 0.0f),		// Camera looking at origin
+		vec3(0.0f, 1.0f, 0.0f));		// 0.0f, 1.0f, 0.0f Look Down and 0.0f, -1.0f, 0.0f Look Up
+	view = lookAt(
+		vec3(camPos),	// Camera (x,y,z), in World Space
+		vec3(0.0f, 0.0f, 0.0f),		// Camera looking at origin
+		vec3(0.0f, 1.0f, 0.0f));
 
-	if (m_scoreArea.positionTimer(t_deltaTime))
-	{
-		changeGoal();
-	}
-	else
-	{
-		glm::mat4 mat = glm::rotate(m_scoreArea.getModel(), 0.4f * t_deltaTime.asMilliseconds(), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_scoreArea.setCube(mat);
-	}
 }
 
 void Game::render()
@@ -272,47 +430,34 @@ void Game::render()
 
 	// Save current OpenGL render states
 	// https://www.sfml-dev.org/documentation/2.0/classsf_1_1RenderTarget.php#a8d1998464ccc54e789aaf990242b47f7
-	m_window.pushGLStates();
+	window.pushGLStates();
 
-	std::string hud = "lives: "	+ std::to_string(m_lives) + "                             score: " + std::to_string(m_score);
+	// Find mouse position using sf::Mouse
+	int x = Mouse::getPosition(window).x;
+	int y = Mouse::getPosition(window).y;
 
+	string hud = "Heads Up Display ["
+		+ string(toString(x))
+		+ "]["
+		+ string(toString(y))
+		+ "]";
 
-	sf::Text text(hud, font);
-	
+	Text text(hud, font);
+
 	text.setColor(sf::Color(255, 255, 255, 170));
-	text.setPosition(25.f, 25.f);
+	text.setPosition(50.f, 50.f);
 
-
-	m_window.draw(text);
-
+	window.draw(text);
 
 	// Restore OpenGL render states
 	// https://www.sfml-dev.org/documentation/2.0/classsf_1_1RenderTarget.php#a8d1998464ccc54e789aaf990242b47f7
 
-	m_window.popGLStates();
+	window.popGLStates();
+	for (int i = 0; i < 2; i++)
+	{
+		renderMultipleCubes(i);
+	}
 
-	// Rebind Buffers and then set SubData
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vib);
-
-	// Use Progam on GPU
-	glUseProgram(progID);
-
-	drawCubes();
-
-	m_window.display();
-
-	// Disable Arrays
-	glDisableVertexAttribArray(positionID);
-	//glDisableVertexAttribArray(colorID);
-	glDisableVertexAttribArray(uvID);
-
-	// Unbind Buffers with 0 (Resets OpenGL States...important step)
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	// Reset the Shader Program to Use
-	glUseProgram(0);
 
 	// Check for OpenGL Error code
 	error = glGetError();
@@ -321,84 +466,22 @@ void Game::render()
 	}
 }
 
-void Game::unload()
+void Game::renderMultipleCubes(int i)
 {
-#if (DEBUG >= 2)
-	DEBUG_MSG("Cleaning up...");
-#endif
-	glDetachShader(progID, vertShader);	// Shader could be used with more than one progID
-	glDetachShader(progID, fragShader);	// ..
-	glDeleteShader(vertShader);			// Delete Vertex Shader
-	glDeleteShader(fragShader);			// Delete Fragment Shader
-	glDeleteProgram(progID);		// Delete Shader
-	
-	glDeleteBuffers(1, &vbo);		// Delete Vertex Buffer
-	glDeleteBuffers(1, &vib);		// Delete Vertex Index Buffer
-	stbi_image_free(img_data);		// Free image stbi_image_free(..)
-}
+	// Rebind Buffers and then set SubData
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vib);
 
-void Game::checkCollsions()
-{
-	if (glm::distance(glm::vec3(m_bulletCube.getModel()[3].x,
-								m_bulletCube.getModel()[3].y,
-								m_bulletCube.getModel()[3].z),
-								glm::vec3(-5, 0, -15)) <= 1.5f)
-	{//checks idistance of goal from cube
-		if (m_scoreArea.getPosition() == 1)
-		{
-			m_score += 100;
-			changeGoal();
-			moving = false;
-		}	
-	}
-	
-	if (glm::distance(glm::vec3(m_bulletCube.getModel()[3].x,
-								m_bulletCube.getModel()[3].y,
-								m_bulletCube.getModel()[3].z),
-								glm::vec3(0, 0, -15)) <= 1.5f)
-	{
-		if (m_scoreArea.getPosition() == 2)
-		{
-			m_score += 100;
-			changeGoal();
-			moving = false;
-		}
-	}
-	
-	if (glm::distance(glm::vec3(m_bulletCube.getModel()[3].x,
-								m_bulletCube.getModel()[3].y,
-								m_bulletCube.getModel()[3].z),
-								glm::vec3(5, 0, -15)) <= 1.5f)
-	{
-		if (m_scoreArea.getPosition() == 3)
-		{
-			m_score += 100;
-			changeGoal();
-			moving = false;
-		}
-	}
-}
+	// Use Progam on GPU
+	glUseProgram(progID);
 
-void Game::changeGoal()
-{
-	m_scoreArea.loadIdentity();
-	
-	m_scoreArea.init();
-}
-
-void Game::loadIdentities()
-{
-	m_playerModel.loadIdentity(); 
-	m_bulletCube.loadIdentity();
-	m_scoreArea.loadIdentity();
-}
-
-void Game::drawCubes()
-{
-	// Find variables within the shader	
+	// Find variables within the shader
 	// https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetAttribLocation.xml
 	positionID = glGetAttribLocation(progID, "sv_position");
 	if (positionID < 0) { DEBUG_MSG("positionID not found"); }
+
+	colorID = glGetAttribLocation(progID, "sv_color");
+	if (colorID < 0) { DEBUG_MSG("colorID not found"); }
 
 	uvID = glGetAttribLocation(progID, "sv_uv");
 	if (uvID < 0) { DEBUG_MSG("uvID not found"); }
@@ -406,7 +489,7 @@ void Game::drawCubes()
 	textureID = glGetUniformLocation(progID, "f_texture");
 	if (textureID < 0) { DEBUG_MSG("textureID not found"); }
 
-	mvpID[PLAYER] = glGetUniformLocation(progID, "sv_mvp");
+	mvpID = glGetUniformLocation(progID, "sv_mvp");
 	if (mvpID < 0) { DEBUG_MSG("mvpID not found"); }
 
 	x_offsetID = glGetUniformLocation(progID, "sv_x_offset");
@@ -424,14 +507,21 @@ void Game::drawCubes()
 	glBufferSubData(GL_ARRAY_BUFFER, ((3 * VERTICES) + (4 * COLORS)) * sizeof(GLfloat), 2 * UVS * sizeof(GLfloat), uvs);
 
 	// Send transformation to shader mvp uniform [0][0] is start of array
-	glUniformMatrix4fv(mvpID[PLAYER], 1, GL_FALSE, &mvp[PLAYER][0][0]);
+	if (i == 0)
+	{
+		glUniformMatrix4fv(mvpID, 1, GL_FALSE, &mvp[0][0]);
+	}
+	else if (i == 1)
+	{
+		glUniformMatrix4fv(mvpID, 1, GL_FALSE, &mvp2[0][0]);
+	}
 
 	// Set Active Texture .... 32 GL_TEXTURE0 .... GL_TEXTURE31
 	glActiveTexture(GL_TEXTURE0);
 	glUniform1i(textureID, 0); // 0 .... 31
 
-	// Set the X, Y and Z offset (this allows for multiple cubes via different shaders)
-	// Experiment with these values to change screen positions
+							   // Set the X, Y and Z offset (this allows for multiple cubes via different shaders)
+							   // Experiment with these values to change screen positions
 	glUniform1f(x_offsetID, 0.00f);
 	glUniform1f(y_offsetID, 0.00f);
 	glUniform1f(z_offsetID, 0.00f);
@@ -439,149 +529,56 @@ void Game::drawCubes()
 	// Set pointers for each parameter (with appropriate starting positions)
 	// https://www.khronos.org/opengles/sdk/docs/man/xhtml/glVertexAttribPointer.xml
 	glVertexAttribPointer(positionID, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	//glVertexAttribPointer(colorID, 4, GL_FLOAT, GL_FALSE, 0, (VOID*)(3 * VERTICES * sizeof(GLfloat)));
+	glVertexAttribPointer(colorID, 4, GL_FLOAT, GL_FALSE, 0, (VOID*)(3 * VERTICES * sizeof(GLfloat)));
 	glVertexAttribPointer(uvID, 2, GL_FLOAT, GL_FALSE, 0, (VOID*)(((3 * VERTICES) + (4 * COLORS)) * sizeof(GLfloat)));
 
 	// Enable Arrays
 	glEnableVertexAttribArray(positionID);
-	//glEnableVertexAttribArray(colorID);
+	glEnableVertexAttribArray(colorID);
 	glEnableVertexAttribArray(uvID);
 
 	// Draw Element Arrays
+
 	glDrawElements(GL_TRIANGLES, 3 * INDICES, GL_UNSIGNED_INT, NULL);
-
-	mvpID[PROJ] = glGetUniformLocation(progID, "sv_mvp");
-	if (mvpID[PROJ] < 0) { DEBUG_MSG("mvpID not found"); }
-
-
-	glBufferSubData(GL_ARRAY_BUFFER, 0 * VERTICES * sizeof(GLfloat), 3 * VERTICES * sizeof(GLfloat), vertices);
-	glBufferSubData(GL_ARRAY_BUFFER, 3 * VERTICES * sizeof(GLfloat), 4 * COLORS * sizeof(GLfloat), colors);
-	glBufferSubData(GL_ARRAY_BUFFER, ((3 * VERTICES) + (4 * COLORS)) * sizeof(GLfloat), 2 * UVS * sizeof(GLfloat), uvs);
-	glUniformMatrix4fv(mvpID[PROJ], 1, GL_FALSE, &mvp[PROJ][0][0]);
-	glDrawElements(GL_TRIANGLES, 3 * INDICES, GL_UNSIGNED_INT, NULL);
-
-	mvpID[GOAL] = glGetUniformLocation(progID, "sv_mvp");
-
-	if (mvpID[GOAL] < 0) { DEBUG_MSG("mvpID not found"); }
+	if (i == 0)
+	{
+		glViewport(0, 0, 400, 600);
+	}
+	else if (i == 1)
+	{
+		glViewport(400, 0, 400, 600);
+	}
 
 
-	glBufferSubData(GL_ARRAY_BUFFER, 0 * VERTICES * sizeof(GLfloat), 3 * VERTICES * sizeof(GLfloat), vertices);
-	glBufferSubData(GL_ARRAY_BUFFER, 3 * VERTICES * sizeof(GLfloat), 4 * COLORS * sizeof(GLfloat), colors);
-	glBufferSubData(GL_ARRAY_BUFFER, ((3 * VERTICES) + (4 * COLORS)) * sizeof(GLfloat), 2 * UVS * sizeof(GLfloat), uvs);
-	glUniformMatrix4fv(mvpID[GOAL], 1, GL_FALSE, &mvp[GOAL][0][0]);
-	glDrawElements(GL_TRIANGLES, 3 * INDICES, GL_UNSIGNED_INT, NULL);
+	if (i == 1)
+	{
+		window.display();
+	}
+	// Disable Arrays
+	glDisableVertexAttribArray(positionID);
+	glDisableVertexAttribArray(colorID);
+	glDisableVertexAttribArray(uvID);
 
+	// Unbind Buffers with 0 (Resets OpenGL States...important step)
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	// Reset the Shader Program to Use
+	glUseProgram(0);
 }
 
-void Game::initCubes()
+void Game::unload()
 {
-	loadIdentities();
-	
-	m_playerModel.init(0, 0, 2);
-	m_bulletCube.init();
-	changeGoal();
-
-	m_score = 0;
-	m_lives = 5;
+#if (DEBUG >= 2)
+	DEBUG_MSG("Cleaning up...");
+#endif
+	glDetachShader(progID, vsid);	// Shader could be used with more than one progID
+	glDetachShader(progID, fsid);	// ..
+	glDeleteShader(vsid);			// Delete Vertex Shader
+	glDeleteShader(fsid);			// Delete Fragment Shader
+	glDeleteProgram(progID);		// Delete Shader
+	glDeleteBuffers(1, &vbo);		// Delete Vertex Buffer
+	glDeleteBuffers(1, &vib);		// Delete Vertex Index Buffer
+	stbi_image_free(img_data);		// Free image stbi_image_free(..)
 }
-
-void Game::setShader()
-{
-	GLint isCompiled = 0;
-	GLint isLinked = 0;
-
-
-	char *vs = NULL, *fs = NULL;
-
-	vertShader = glCreateShader(GL_VERTEX_SHADER);
-	fragShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-	vs = textFileRead("cube.vert");//loads in the vertex shader code
-	fs = textFileRead("cube.frag");//loads in the fragment shader code
-
-	const char * vv = vs;
-	const char * ff = fs;
-
-	glShaderSource(vertShader, 1, &vv, NULL);
-	glShaderSource(fragShader, 1, &ff, NULL);
-
-
-	glCompileShader(vertShader);
-	glCompileShader(fragShader);
-
-	glGetShaderiv(vertShader, GL_COMPILE_STATUS, &isCompiled);
-
-	if (isCompiled == GL_TRUE) {
-		DEBUG_MSG("Vertex Shader Compiled");
-		isCompiled = GL_FALSE;
-	}
-	else
-	{
-		DEBUG_MSG("ERROR: Vertex Shader Compilation Error");
-	}
-
-	//Check is Shader Compiled
-	glGetShaderiv(fragShader, GL_COMPILE_STATUS, &isCompiled);
-
-	if (isCompiled == GL_TRUE) {
-		DEBUG_MSG("Fragment Shader Compiled");
-		isCompiled = GL_FALSE;
-	}
-	else
-	{
-		DEBUG_MSG("ERROR: Fragment Shader Compilation Error");
-	}
-	//DEBUG_MSG("Setting Up and Linking Shader");
-	progID = glCreateProgram();	//Create program in GPU
-	glAttachShader(progID, vertShader); //Attach Vertex Shader to Program
-	glAttachShader(progID, fragShader); //Attach Fragment Shader to Program
-	glLinkProgram(progID);
-	//Check is Shader Linked
-	glGetProgramiv(progID, GL_LINK_STATUS, &isLinked);
-	if (isLinked == 1) {
-		DEBUG_MSG("Shader Linked");
-	}
-	else
-	{
-
-
-		DEBUG_MSG("ERROR: Shader Link Error");
-	}
-
-	// Use Progam on GPU
-	// https://www.opengl.org/sdk/docs/man/html/glUseProgram.xhtml
-	glUseProgram(progID);
-
-	// Find variables in the shader
-	// https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetAttribLocation.xml
-	positionID = glGetAttribLocation(progID, "sv_position");
-	//colorID = glGetAttribLocation(progID, "sv_color");
-}
-
-void Game::doInput(sf::Time t_deltaTime)
-{
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-	{
-		/// <summary>
-		///creates new matrix that holds ytranslated player and later assigns it to player
-		/// </summary>
-		/// <param name="t_deltaTime"></param>
-		glm::mat4 mat = glm::translate(m_playerModel.getModel(), glm::vec3(-0.005 * t_deltaTime.asMilliseconds(), 0, 0));
-		m_playerModel.setCube(mat);
-	}
-
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-	{
-		glm::mat4 mat = glm::translate(m_playerModel.getModel(), glm::vec3(0.005 * t_deltaTime.asMilliseconds(), 0, 0));
-		m_playerModel.setCube(mat);
-	}
-
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && !moving)
-	{
-		// shoooooooooooooooooooooooooooooot: gets position par tof the matrix and sets to cube so it spawns in 
-		m_bulletCube.goToPlayer(m_playerModel.getModel());
-		moving = true;
-	}
-}
-
 
